@@ -7,9 +7,9 @@
   "retryAttempts": 2,
   "nodes": [
     {
-      "id": "26d494a60a286431",
+      "id": "gpu-host-1",
       "url": "http://192.168.2.101:7860",
-      "name": "vimage2",
+      "name": "gpu-host-1",
       "backend": "sd-forge",
       "enabled": true,
       "priority": 1,
@@ -17,15 +17,15 @@
       "model": null,
       "forgeSettings": {},
       "mediatorSettings": {
-        "host": "vimage2",
+        "host": "gpu-host-1",
         "deforumPort": 8765,
         "deforumationPort": 8766
       }
     },
     {
-      "id": "ae92f5c943692d95",
+      "id": "gpu-host-2",
       "url": "http://192.168.2.104:7860",
-      "name": "vimage5",
+      "name": "gpu-host-2",
       "backend": "sd-forge",
       "enabled": true,
       "priority": 2,
@@ -33,15 +33,15 @@
       "model": "SDXL/sd_xl_turbo_1.0_fp16.safetensors",
       "forgeSettings": {},
       "mediatorSettings": {
-        "host": "vimage5",
+        "host": "gpu-host-2",
         "deforumPort": 8765,
         "deforumationPort": 8766
       }
     },
     {
-      "id": "d2e136d3a7118d41",
+      "id": "ollama-host",
       "url": "http://192.168.2.104:11434",
-      "name": "ollama-vimage5",
+      "name": "ollama-host",
       "backend": "ollama",
       "enabled": true,
       "priority": 3,
