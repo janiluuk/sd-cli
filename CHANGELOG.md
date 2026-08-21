@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file.
 
 
+## [0.6.76] - 2026-08-21
+
+## What's Changed
+
+- refactor: replace vimage2/vimage5 references with generic gpu-host naming in gpu-pool.json (f2829ca)
+
+**Full Changelog**: https://github.com/janiluuk/defora/compare/v0.6.75...v0.6.76
+
+
 ## [0.6.75] - 2026-06-17
 
 ## What's Changed
