@@ -66,6 +66,72 @@ const template = vue
 let script = scriptMatch[1].trim();
 script = script.replace(/import\s+['"]\.\/style\.css['"];?\s*/g, '');
 
+const VUE_BUILTIN_TAGS = new Set([
+  'Template',
+  'Component',
+  'Slot',
+  'Transition',
+  'TransitionGroup',
+  'KeepAlive',
+  'Teleport',
+  'Suspense',
+]);
+
+function collectAppTemplateComponentTags(tpl) {
+  const tags = new Set();
+  const re = /<\/?([A-Z][A-Za-z0-9]*)\b/g;
+  let m;
+  while ((m = re.exec(tpl)) !== null) {
+    const name = m[1];
+    if (!VUE_BUILTIN_TAGS.has(name)) tags.add(name);
+  }
+  return tags;
+}
+
+function collectImportedVueComponents(scriptBody) {
+  const names = new Set();
+  const re = /import\s+([A-Za-z0-9_$]+)\s+from\s+['"][^'"]+\.vue['"]/g;
+  let m;
+  while ((m = re.exec(scriptBody)) !== null) names.add(m[1]);
+  return names;
+}
+
+function collectRegisteredComponents(scriptBody) {
+  const names = new Set();
+  const match = scriptBody.match(/components\s*:\s*\{([^}]*)\}/);
+  if (!match) return names;
+  for (const part of match[1].split(',')) {
+    const token = part.trim();
+    if (!token) continue;
+    // Support `Foo` and `Foo: Foo` / `Foo: Bar`
+    const key = token.split(':')[0].trim();
+    if (/^[A-Za-z_$][\w$]*$/.test(key)) names.add(key);
+  }
+  return names;
+}
+
+{
+  const used = collectAppTemplateComponentTags(template);
+  const imported = collectImportedVueComponents(script);
+  const registered = collectRegisteredComponents(script);
+  const missing = [...used].filter((name) => !imported.has(name) && !registered.has(name));
+  if (missing.length) {
+    console.error(
+      'App.vue template references components that are not imported/registered:\n  - ' +
+        missing.sort().join('\n  - ')
+    );
+    process.exit(1);
+  }
+  const importedNotRegistered = [...imported].filter((name) => !registered.has(name));
+  if (importedNotRegistered.length) {
+    console.error(
+      'App.vue imports Vue components that are missing from components: { }:\n  - ' +
+        importedNotRegistered.sort().join('\n  - ')
+    );
+    process.exit(1);
+  }
+}
+
 let inlinedUtils = '';
 let motionLorasInlined = false;
 for (const mod of UTIL_MODULES) {
@@ -175,7 +241,6 @@ const FULL_STUB_SUFFIXES = [
   'RunsBrowserPanel.vue',
   'FrameRailPanel.vue',
   'SequencerControlsPanel.vue',
-  'LoraCrossfaderPanel.vue',
   'StylesSettingsPanel.vue',
   'VideoSwarmBrowser.vue',
   'ProjectsBrowser.vue',
@@ -186,9 +251,7 @@ const FULL_STUB_SUFFIXES = [
   'AudioBrowser.vue',
   'AnimationEnginePanel.vue',
   'LiveEngineControls.vue',
-  'LiveEngineControlsDock.vue',
   'CrossfaderPanel.vue',
-  'DeforumJobPanel.vue',
   'DeforumJobToolbar.vue',
   'LiveParametersPanel.vue',
   'DeforumMotionPads.vue',

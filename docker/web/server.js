@@ -83,6 +83,7 @@ async function start(opts = {}) {
     forgeCacheValidUntil: 0,
     loraCacheValidUntil: 0,
     controlNetModels: null,
+    controlNetModelsFetchedAt: 0,
     loraModels: null,
     sdModels: null,
     currentModel: null,
@@ -4027,12 +4028,13 @@ async function start(opts = {}) {
 
     const target = forgeTarget(req);
     const forgeUrl = target.url;
+    const fiveMinutes = 5 * 60 * 1000;
 
     try {
       // Try to fetch ControlNet models from SD-Forge API
       // Use native fetch (Node.js 18+) or fallback gracefully
       if (typeof fetch === 'undefined') {
-        throw new Error('fetch not available, using placeholder models');
+        throw new Error('fetch not available');
       }
       
       const controller = new AbortController();
@@ -4061,29 +4063,34 @@ async function start(opts = {}) {
         apiStatus.sdForgeAvailable = true;
         apiStatus.lastChecked = new Date().toISOString();
         apiStatus.controlNetModels = models;
+        apiStatus.controlNetModelsFetchedAt = Date.now();
         
         console.log(`[controlnet] Fetched ${models.length} models from SD-Forge`);
         return res.json({ models, source: 'sd-forge', cached: false });
       }
+      throw new Error(`Forge controlnet/model_list returned ${response.status}`);
     } catch (err) {
-      // API unavailable or timeout - fall back to placeholder or cache
+      // API unavailable or timeout — serve short-lived cache, never fake selectable models
       apiStatus.sdForgeAvailable = false;
       apiStatus.lastChecked = new Date().toISOString();
-      console.log(`[controlnet] SD-Forge API unavailable, using ${apiStatus.controlNetModels ? 'cached' : 'placeholder'} models: ${err.message}`);
+      console.log(`[controlnet] SD-Forge API unavailable, using ${apiStatus.controlNetModels ? 'cached' : 'empty'} models: ${err.message}`);
       
-      // Return cached models if available (with 5 minute cache validity)
-      if (apiStatus.controlNetModels && apiStatus.lastChecked) {
-        const cacheAge = new Date() - new Date(apiStatus.lastChecked);
-        const fiveMinutes = 5 * 60 * 1000;
+      if (apiStatus.controlNetModels && apiStatus.controlNetModelsFetchedAt) {
+        const cacheAge = Date.now() - apiStatus.controlNetModelsFetchedAt;
         if (cacheAge < fiveMinutes) {
-          return res.json({ models: apiStatus.controlNetModels, source: 'cache', cached: true, cacheAge: Math.floor(cacheAge / 1000) });
+          return res.json({
+            models: apiStatus.controlNetModels,
+            source: 'cache',
+            cached: true,
+            cacheAge: Math.floor(cacheAge / 1000),
+          });
         }
       }
     } finally {
       target.release();
     }
 
-    res.json({ models: placeholderModels, source: 'placeholder', cached: false });
+    res.json({ models: [], source: 'unavailable', cached: false, error: 'Forge ControlNet models unavailable' });
   });
 
   const controlNetModuleFallback = [
@@ -4196,8 +4203,11 @@ async function start(opts = {}) {
   // Refresh models endpoint - clears cache and forces re-fetch
   app.post("/api/models/refresh", (_req, res) => {
     apiStatus.controlNetModels = null;
+    apiStatus.controlNetModelsFetchedAt = 0;
     apiStatus.loraModels = null;
+    apiStatus.loraCacheValidUntil = 0;
     apiStatus.sdModels = null;
+    apiStatus.forgeCacheValidUntil = 0;
     apiStatus.currentModel = null;
     apiStatus.lastChecked = null;
     console.log("[api] Model cache cleared, will refetch on next request");
@@ -4246,7 +4256,7 @@ async function start(opts = {}) {
     try {
       // Try to fetch models from SD-Forge API
       if (typeof fetch === 'undefined') {
-        throw new Error('fetch not available, using placeholder models');
+        throw new Error('fetch not available');
       }
       
       const controller = new AbortController();
@@ -4276,17 +4286,17 @@ async function start(opts = {}) {
         console.log(`[sd-models] Fetched ${enrichedModels.length} models from SD-Forge`);
         return res.json({ models: enrichedModels, source: 'sd-forge', cached: false });
       }
-      return res.json({ models: placeholderModels, source: 'placeholder', cached: false });
+      throw new Error(`Forge sd-models returned ${response.status}`);
     } catch (err) {
       apiStatus.sdForgeAvailable = false;
       apiStatus.lastChecked = new Date().toISOString();
-      console.log(`[sd-models] SD-Forge API unavailable, using ${apiStatus.sdModels ? 'cached' : 'placeholder'} models: ${err.message}`);
+      console.log(`[sd-models] SD-Forge API unavailable, using ${apiStatus.sdModels ? 'cached' : 'empty'} models: ${err.message}`);
       
       if (apiStatus.sdModels && apiStatus.forgeCacheValidUntil > Date.now()) {
         const cacheAge = Math.floor((apiStatus.forgeCacheValidUntil - Date.now()) / 1000);
         return res.json({ models: apiStatus.sdModels, source: 'cache', cached: true, cacheAge });
       }
-      return res.json({ models: placeholderModels, source: 'placeholder', cached: false });
+      return res.json({ models: [], source: 'unavailable', cached: false, error: 'Forge checkpoints unavailable' });
     } finally {
       target.release();
     }
@@ -4513,12 +4523,6 @@ async function start(opts = {}) {
   app.get("/api/loras", async (req, res) => {
     const target = forgeTarget(req);
     const forgeUrl = target.url;
-    try {
-    if (apiStatus.loraModels && apiStatus.loraCacheValidUntil > Date.now()) {
-      const cacheAge = Math.floor((apiStatus.loraCacheValidUntil - Date.now()) / 1000);
-      return res.json({ loras: apiStatus.loraModels, source: 'cache', cached: true, cacheAge });
-    }
-    // Fallback placeholder LoRAs for development/demo
     const placeholderLoras = [
       {
         id: "lora_sdxl_lightning_1",
@@ -4563,6 +4567,16 @@ async function start(opts = {}) {
         strength: 0.9,
       },
     ];
+
+    if (externalBlocked()) {
+      return res.json({ loras: placeholderLoras, source: "placeholder", cached: false, ciOffline: true });
+    }
+
+    try {
+    if (apiStatus.loraModels && apiStatus.loraCacheValidUntil > Date.now()) {
+      const cacheAge = Math.floor((apiStatus.loraCacheValidUntil - Date.now()) / 1000);
+      return res.json({ loras: apiStatus.loraModels, source: 'cache', cached: true, cacheAge });
+    }
     
     try {
       // Try to fetch LoRAs from SD-Forge API
@@ -4599,15 +4613,16 @@ async function start(opts = {}) {
         console.log(`[loras] Fetched ${formattedLoras.length} LoRAs from SD-Forge`);
         return res.json({ loras: formattedLoras, source: 'sd-forge' });
       }
+      throw new Error(`Forge loras returned ${response.status}`);
     } catch (err) {
-      // API unavailable or timeout - fall back to placeholder
-      console.log(`[loras] SD-Forge API unavailable, using ${apiStatus.loraModels ? 'cached' : 'placeholder'} LoRAs: ${err.message}`);
+      // API unavailable or timeout — serve cache only, never fake selectable LoRAs
+      console.log(`[loras] SD-Forge API unavailable, using ${apiStatus.loraModels ? 'cached' : 'empty'} LoRAs: ${err.message}`);
       if (apiStatus.loraModels) {
         return res.json({ loras: apiStatus.loraModels, source: 'cache', cached: true });
       }
     }
     
-    res.json({ loras: placeholderLoras, source: 'placeholder' });
+    res.json({ loras: [], source: 'unavailable', error: 'Forge LoRAs unavailable' });
     } finally {
       target.release();
     }

@@ -201,6 +201,13 @@ describe("ControlNet API", () => {
     expect(res.status).to.equal(200);
     expect(res.body).to.have.property("models");
     expect(res.body.models).to.be.an("array");
+    expect(res.body).to.have.property("source");
+
+    if (res.body.source === "unavailable") {
+      expect(res.body.models).to.have.length(0);
+      return;
+    }
+
     expect(res.body.models.length).to.be.greaterThan(0);
 
     // Verify structure of model objects
@@ -217,6 +224,8 @@ describe("ControlNet API", () => {
 
     if (res.body.source === "sd-forge" || res.body.source === "cache") {
       expect(ids.length).to.be.greaterThan(0);
+    } else if (res.body.source === "unavailable") {
+      expect(ids).to.have.length(0);
     } else {
       expect(ids).to.include("canny");
       expect(ids).to.include("depth");

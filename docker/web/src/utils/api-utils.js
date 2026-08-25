@@ -89,5 +89,6 @@ export function modelSourceLabel(source) {
   if (source === 'sd-forge') return 'Forge';
   if (source === 'cache') return 'Cache';
   if (source === 'placeholder') return 'Placeholder';
+  if (source === 'unavailable') return 'Unavailable';
   return source || 'Unknown';
 }

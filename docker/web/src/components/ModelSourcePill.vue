@@ -17,6 +17,7 @@ export default {
       if (s === 'sd-forge') return 'forge';
       if (s === 'cache') return 'cache';
       if (s === 'placeholder') return 'placeholder';
+      if (s === 'unavailable') return 'placeholder';
       return 'other';
     },
     label() {
@@ -24,6 +25,7 @@ export default {
       if (s === 'sd-forge') return 'Forge';
       if (s === 'cache') return 'Cache';
       if (s === 'placeholder') return 'Placeholder';
+      if (s === 'unavailable') return 'Unavailable';
       return this.source || 'Unknown';
     },
   },

@@ -136,8 +136,6 @@
       </button>
       <div v-show="rightPanelOpen" class="live-right-column" :class="{ 'stage-rack-overlay': currentTab === 'MOTION' }">
         <LiveView v-if="currentTab === 'LIVE'" :app="appViewModel" />
-        <LibraryView v-else-if="currentTab === 'LIBRARY'" :app="appViewModel" />
-        <StreamView v-else-if="currentTab === 'STREAM'" :app="appViewModel" />
         <PromptsView v-else-if="currentTab === 'PROMPTS'" :app="appViewModel" />
         <MotionView v-else-if="currentTab === 'MOTION'" :app="appViewModel" />
         <ModulationView v-else-if="currentTab === 'MODULATION'" :app="appViewModel" />
@@ -937,8 +935,8 @@ import UiIcon from './components/UiIcon.vue'
 import SequencerControlsPanel from './components/SequencerControlsPanel.vue'
 import ThreeBackground from './components/ThreeBackground.vue'
 import LiveView from './components/views/LiveView.vue'
-import LiveEngineControlsDock from './components/LiveEngineControlsDock.vue'
 import AnimationEnginePanel from './components/AnimationEnginePanel.vue'
+import CrossfaderPanel from './components/CrossfaderPanel.vue'
 import LibraryWorkspaceOverlay from './components/LibraryWorkspaceOverlay.vue'
 import EditorView from './components/views/EditorView.vue'
 import PromptsView from './components/views/PromptsView.vue'
@@ -951,7 +949,7 @@ import { paintSpectrumBars } from './utils/audio-spectrum.js'
 
 export default {
   name: 'App',
-  components: { StatusStrip, GlassPanel, LiveParamRow, UiIcon, SequencerControlsPanel, GenerateView, ThreeBackground, LiveView, AnimationEnginePanel, LibraryWorkspaceOverlay, EditorView, PromptsView, MotionView, ModulationView, SettingsView, RunsBrowserPanel },
+  components: { StatusStrip, GlassPanel, LiveParamRow, UiIcon, SequencerControlsPanel, GenerateView, ThreeBackground, LiveView, AnimationEnginePanel, CrossfaderPanel, LibraryWorkspaceOverlay, EditorView, PromptsView, MotionView, ModulationView, SettingsView, RunsBrowserPanel },
   data() {
     return {
        showFrames: false,
@@ -982,7 +980,6 @@ export default {
       deforumSettingsSaving: false,
       paramPanelOpen: false,
       deforumPanelOpen: false,
-      liveDrawerOpen: true,
       rightPanelOpen: true,
       sidePanelDock: 'auto', // auto | edge | video
       sidePanelDockBounds: { top: 0, left: 0, height: 0 },
@@ -3729,7 +3726,6 @@ export default {
   resetUiLayoutDefaults() {
     this.paramPanelOpen = false;
     this.deforumPanelOpen = false;
-    this.liveDrawerOpen = true;
     this.rightPanelOpen = true;
     this.sidePanelDock = 'auto';
     this.videoStageSize = 'full';
@@ -4149,11 +4145,6 @@ export default {
   },
   openRunsDrawerSystem() {
     this.switchTab('RUNS');
-  },
-  openFramesInRunsPanel() {
-    this.switchTab('RUNS');
-    this.setRunsBrowserTab('frames');
-    this.syncRunsMonitorPolling();
   },
   openFramesInRunsPanel() {
     this.liveBottomDrawerOpen = true;
@@ -4576,7 +4567,6 @@ export default {
  },
  toggleRightPanel() {
    this.rightPanelOpen = !this.rightPanelOpen;
-   this.liveDrawerOpen = this.rightPanelOpen;
    this.saveSessionState();
  },
  toggleEngineDrawer() {
@@ -5727,7 +5717,6 @@ applyContextPanelStartupDefaults() {
   } catch (_e) {}
   if (!panelPrefLoaded) {
     this.rightPanelOpen = true;
-    this.liveDrawerOpen = true;
   }
   let savedTab = 'LIVE';
   try {
@@ -6381,7 +6370,7 @@ useLibraryAudio(track, options = {}) {
   this.audio.uploadedFile = track.title || track.audioName || 'Audio';
   this.audio.objectUrl = track.audioUrl || null;
   this.audioBeatMacrosCollapsed = true;
-  this.primeAudioSpectrumPlaceholder();
+  this.audioSpectrumBins = [];
   let setupDone = false;
   const afterAnalyserReady = () => {
     if (setupDone) return;
@@ -8948,7 +8937,6 @@ emitMotionLiveParam(key, val) {
    }
    if (this.rightPanelOpen) {
      this.rightPanelOpen = false;
-     this.liveDrawerOpen = false;
      this.saveSessionState();
      return true;
    }
@@ -9136,10 +9124,6 @@ emitMotionLiveParam(key, val) {
      return this.modulationTargetByKey(slot.paramKey);
    }
    return this.modulationTargetByKey(k);
- },
- updateMidiMapping(map) {
-   // noop hook for now; v-model already updates
-   return map;
  },
  setMorph(on) {
    this.prompts.morphOn = on;
@@ -10559,7 +10543,7 @@ audioBandWindowStyle(mapping) {
      };
      if (typeof this.$nextTick === "function") this.$nextTick(scheduleSetup);
      else setTimeout(scheduleSetup, 0);
-     this.primeAudioSpectrumPlaceholder();
+     this.audioSpectrumBins = [];
    } catch (err) {
      if (this.audio.objectUrl) {
        try {
@@ -10576,13 +10560,6 @@ audioBandWindowStyle(mapping) {
 onAudioUpload(evt) {
   return this.handleAudioUpload(evt);
 },
- primeAudioSpectrumPlaceholder() {
-   const bins = new Array(512);
-   for (let i = 0; i < bins.length; i++) {
-     bins[i] = Math.min(255, Math.round(24 + 20 * Math.sin(i / 11) + 12 * Math.sin(i / 37)));
-   }
-   this.audioSpectrumBins = bins;
- },
  clearAudioFile() {
    this.stopAudioBandPreview();
    this.disposeLiveAudioAnalyser();
@@ -12150,63 +12127,6 @@ generatorRequestBody() {
     numScenes,
   });
 },
- _buildScene(theme, style, idx, total) {
-   const r = (a) => this._genRnd(a);
-   const g = this.genData;
-   const mood = idx === 0 ? 'opening' : idx >= total - 1 ? 'closing' : idx < Math.ceil(total / 2) ? 'buildup' : 'climax';
-   const adj = r(g.sceneDescriptors[mood]);
-   const envPool = g.environments[idx % g.environments.length];
-   const env = r(envPool);
-   const light = r(g.lighting);
-   const qual = r(g.quality);
-   const tech = r(g.techSpecs);
-   const artistPool = g.artists[style] || g.artists.default;
-   const a1 = r(artistPool);
-   let a2 = r(artistPool);
-   for (let i = 0; i < 5 && a2 === a1 && artistPool.length > 1; i++) a2 = r(artistPool);
-   const neg = r(g.negatives);
-   return `A ${adj} scene from ${theme} — ${env}, ${light}. ${qual}, ${tech}, inspired by ${a1} and ${a2} --neg ${neg}`;
- },
- _buildMotion(numScenes, framesPerScene, totalFrames) {
-   const g = this.genData;
-   const r = Math.random.bind(Math);
-   const behaviors = g.cameraBehaviors;
-   const assigned = [];
-   let last = null;
-   for (let i = 0; i < numScenes; i++) {
-     let b;
-     let tries = 0;
-     do { b = behaviors[Math.floor(r() * behaviors.length)]; tries++; }
-     while (b === last && behaviors.length > 1 && tries < 10);
-     assigned.push(b);
-     last = b;
-   }
-   const zParts = [], txParts = [], tyParts = [], tcxParts = [], tcyParts = [];
-   let prevTx = null, prevTy = null, prevTcx = null, prevTcy = null;
-   for (let i = 0; i < numScenes; i++) {
-     const frame = i * framesPerScene;
-     const b = assigned[i];
-     const zVal = b.zoom === 'BREATHE'
-       ? `1.0025+0.002*sin(1.25*3.14*t/${framesPerScene})`
-       : b.zoom;
-     zParts.push(`${frame}:(${zVal})`);
-     if (b.tx !== prevTx) { txParts.push(`${frame}:(${b.tx})`); prevTx = b.tx; }
-     if (b.ty !== prevTy) { tyParts.push(`${frame}:(${b.ty})`); prevTy = b.ty; }
-     const tcx = Math.round((0.3 + r() * 0.4) * 10) / 10;
-     const tcy = Math.round((0.3 + r() * 0.4) * 10) / 10;
-     if (tcx !== prevTcx) { tcxParts.push(`${frame}:(${tcx})`); prevTcx = tcx; }
-     if (tcy !== prevTcy) { tcyParts.push(`${frame}:(${tcy})`); prevTcy = tcy; }
-   }
-   zParts.push(`${totalFrames}:(1.0)`);
-   if (prevTx !== 0) txParts.push(`${totalFrames}:(0)`);
-   if (prevTy !== 0) tyParts.push(`${totalFrames}:(0)`);
-   const motion = { Zoom: zParts.join(', ') };
-   if (txParts.length) motion['Translation X'] = txParts.join(', ');
-   if (tyParts.length) motion['Translation Y'] = tyParts.join(', ');
-   if (tcxParts.length > 1) motion['Transform Center X'] = tcxParts.join(', ');
-   if (tcyParts.length > 1) motion['Transform Center Y'] = tcyParts.join(', ');
-   return motion;
- },
 storyMotionDeforumKeyMap() {
   return {
     Zoom: 'zoom',
@@ -12294,34 +12214,6 @@ async applyStoryMotionToDeforumSettings(motion) {
     console.warn('[story] apply motion to deforum failed', err);
   }
 },
-buildLocalStoryResult() {
-  const payload = this.generatorRequestBody();
-  const framesPerScene = Math.max(1, Math.floor(payload.totalFrames / payload.numScenes));
-  const scenes = {};
-  for (let i = 0; i < payload.numScenes; i++) {
-    scenes[String(i * framesPerScene)] = this._buildScene(payload.theme, payload.style, i, payload.numScenes);
-  }
-  const motion = this._buildMotion(payload.numScenes, framesPerScene, payload.totalFrames);
-  const lines = [
-    `Theme: ${payload.theme}`,
-    `Style: ${payload.style}`,
-    `Resolution: ${payload.width}x${payload.height}`,
-    `FPS: ${payload.fps}`,
-    `Total frames: ${payload.totalFrames}`,
-    '',
-    JSON.stringify(scenes, null, 2),
-    '',
-    'Motion Settings:',
-  ];
-  for (const [key, value] of Object.entries(motion)) lines.push(`${key}: ${value}`);
-  return {
-    ...payload,
-    scenes,
-    motion,
-    formatted: lines.join('\n'),
-    source: { backend: 'local', model: '' },
-  };
-},
 async generateStory() {
   const g = this.generator;
   g.isGenerating = true;
@@ -12341,8 +12233,8 @@ async generateStory() {
       g.status = `Story ready${source} — review and apply below.`;
     } catch (err) {
       await this.persistStoryLlmRequestLog(payload);
-      g.result = this.buildLocalStoryResult();
-      g.status = `Story ready via local fallback (${err.message})`;
+      g.result = null;
+      g.status = `Story generation failed: ${err.message}`;
     }
   } catch (err) {
     g.status = `Error: ${err.message}`;
@@ -12518,10 +12410,9 @@ hasRecentSessionResumeToken({ now = Date.now(), maxAgeMs = 24 * 60 * 60 * 1000 }
      if (typeof s.showFrames === 'boolean') this.showFrames = s.showFrames;
      if (typeof s.rightPanelOpen === 'boolean') {
        this.rightPanelOpen = s.rightPanelOpen;
-       this.liveDrawerOpen = s.rightPanelOpen;
      } else if (typeof s.liveDrawerOpen === 'boolean') {
+       // Legacy session key from pre-rename drawer state
        this.rightPanelOpen = s.liveDrawerOpen;
-       this.liveDrawerOpen = s.liveDrawerOpen;
      }
      if (s.sidePanelDock === 'auto' || s.sidePanelDock === 'edge' || s.sidePanelDock === 'video') {
        this.sidePanelDock = s.sidePanelDock;

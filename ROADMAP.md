@@ -25,7 +25,7 @@ Design reference was `design.zip` + `UX-AUDIT.md` (triaged into this section; bo
 | Phase | Audit step | Scope | Status |
 |-------|------------|--------|--------|
 | **U-21** | Step 1 — First-class AUDIO, RUNS, GENERATE nav | Add tabs to `App.vue` `tabs[]`; full-page `RunsBrowserPanel` / `GenerateView`; route AUDIO to reactive panel; move STREAM to SETTINGS → Output | **Done** — 8-tab nav (LIVE, PROMPTS, MOTION, MODULATION, AUDIO, RUNS, SETTINGS, GENERATE); STREAM → SETTINGS → OUTPUT; `switchTab('STREAM')` legacy alias routes to Output |
-| **U-22** | Step 2 — Remove Perf / bottom drawer | Drop `liveBottomDrawerOpen` state, FAB, duplicate MODULATION/CROSSFADER drawer; runs via tab only | **Done** — dead drawer state removed; `openRunsDrawerSystem()` → `switchTab('RUNS')`; HLS watch no longer tied to STREAM tab |
+| **U-22** | Step 2 — Remove Perf / bottom drawer | Drop `liveBottomDrawerOpen` state, FAB, duplicate MODULATION/CROSSFADER drawer; runs via tab only | **Superseded** — bottom drawer restored on `ui/crossfader-bottom-drawer-engine-dock` (MODULATION / CROSSFADER / SYSTEM + FAB); RUNS remains a top-nav tab; `openFramesInRunsPanel()` opens SYSTEM drawer frames |
 | **U-23** | Step 3 — LIVE stage HUDs | GlassPanel morph (bottom-right) + modulating-now (bottom-left) + recent-runs filmstrip; UiIcon pin/lock | **Done** — morph + modulating-now GlassPanels mounted on LIVE stage; recent-runs filmstrip; UiIcon pin/lock in `LiveView.vue` (morph still also in PROMPTS until U-27) |
 | **U-24** | Step 4 — MODULATION waveform-first | Waveform hero, compact LFO meta line, teal active / dim idle cards | **Done** — waveform-first cards; controls expand on select; compact BPM/depth/routes line when collapsed |
 | **U-25** | Step 5 — AUDIO meter-first mappings | Frequency band meter hero, quick-band pills (`sub · bass · …`) | **Done** — quick-band pills above spectrum hero; taller spectrum canvas; meter cards unchanged |
@@ -40,9 +40,9 @@ Design reference was `design.zip` + `UX-AUDIT.md` (triaged into this section; bo
 | ID | Issue | Status | Notes |
 |----|-------|--------|-------|
 | L1 | Emoji pin/lock → UiIcon | **Done** | `LiveView.vue` |
-| L2 | Morph HUD on stage | **Done** | `MorphCrossfaderPanel` on LIVE |
-| L3 | Modulating-now HUD | **Done** | `ModulationActiveModsPanel` on LIVE |
-| L4 | MODULATION duplicated in drawer | **Done** | Drawer UI removed |
+| L2 | Morph HUD on stage | **Done** | Inline morph GlassPanel on LIVE stage |
+| L3 | Modulating-now HUD | **Done** | Inline modulating HUD on LIVE |
+| L4 | MODULATION duplicated in drawer | **Superseded** | Bottom drawer restored: MODULATION grid + CROSSFADER (`CrossfaderPanel`) + SYSTEM (`RunsBrowserPanel`) |
 | L5 | Recent-runs filmstrip on LIVE | **Done** | `recentRunsRail` on stage |
 | M1–M3 | LFO compact / teal / idle | **Done** | Standby compact copy, `--idle` dim, teal active chrome |
 | M4–M5 | Audio reactive cards / LFO phase | **Done** | Idle/mapped/live card states; phase on Waveform |
@@ -59,7 +59,7 @@ Design reference was `design.zip` + `UX-AUDIT.md` (triaged into this section; bo
 | X2 | GlassPanel underused | **Done** | LIVE/Motion/Stream/Generate context panels use GlassPanel |
 | X3–X4 | `--live` / `--accent` on active states | **Done** | Sub-pill active uses `--accent`; stream live pill uses `--live` tokens |
 | X5–X6 | framesync-panel / inline hex | **Done** | CN layout → CSS classes; tab accents via `:root` aliases |
-| X7 | Perf drawer duplicate | **Done** | Template removed |
+| X7 | Perf drawer duplicate | **Superseded** | Bottom drawer restored intentionally (see U-22) |
 | X8 | SYSTEM label collision | **Done** | Renamed to RUNS; legacy SYSTEM alias preserved |
 
 ### Recommended order
@@ -201,7 +201,7 @@ Cross-checking [README.md](README.md) with this roadmap surfaced the following *
 | **19** | **Forge routes + GPU pool** | sd-models, loras, forge options use pool target | **Done** (item 13) |
 | **20** | **Nightly Docker E2E** | `.github/workflows/nightly-docker-e2e.yml` | **Done** (item 14) |
 | **U-21** | **UX: first-class nav tabs** | AUDIO, RUNS, GENERATE in top nav; STREAM → SETTINGS Output | **Done** |
-| **U-22** | **UX: remove Perf drawer** | Delete dead `liveBottomDrawerOpen` paths | **Done** |
+| **U-22** | **UX: Perf / bottom drawer** | Originally remove drawer; restored on crossfader-dock branch | **Superseded** |
 | **U-23** | **UX: LIVE stage HUDs** | Mount morph + modulating-now GlassPanels; filmstrip | **Done** |
 | **U-24** | **UX: modulation cards** | Waveform-first LFO cards, compact meta | **Done** |
 | **U-25** | **UX: audio meter-first** | Band meters + quick presets | **Done** |

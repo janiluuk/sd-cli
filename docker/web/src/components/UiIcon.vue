@@ -87,25 +87,6 @@
       <path d="M17 6.5L20 9.5L17 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
       <path d="M17 10.5L20 13.5L17 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
     </template>
-    <template v-else-if="name === 'sparkles'">
-      <path d="M12 3.8L13.7 8.3L18.2 10L13.7 11.7L12 16.2L10.3 11.7L5.8 10L10.3 8.3L12 3.8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
-      <path d="M18.5 4.5L19.2 6.3L21 7L19.2 7.7L18.5 9.5L17.8 7.7L16 7L17.8 6.3L18.5 4.5Z" fill="currentColor" />
-      <path d="M6 15.5L6.8 17.5L8.8 18.3L6.8 19.1L6 21.1L5.2 19.1L3.2 18.3L5.2 17.5L6 15.5Z" fill="currentColor" />
-    </template>
-    <template v-else-if="name === 'wave'">
-      <path d="M3 13C4.4 13 4.8 8 6.3 8C7.8 8 8.2 16 9.7 16C11.2 16 11.6 5 13.1 5C14.6 5 15 19 16.5 19C18 19 18.4 11 19.9 11C20.7 11 21.3 12 21 13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-    </template>
-    <template v-else-if="name === 'gear'">
-      <circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.8" />
-      <path d="M12 3.5V6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      <path d="M12 18V20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      <path d="M20.5 12H18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      <path d="M6 12H3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      <path d="M17.9 6.1L16.1 7.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      <path d="M7.9 16.1L6.1 17.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      <path d="M17.9 17.9L16.1 16.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-      <path d="M7.9 7.9L6.1 6.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-    </template>
     <template v-else-if="name === 'arrow-left'">
       <path d="M15.5 7.5L10.5 12L15.5 16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
       <path d="M11 12H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
